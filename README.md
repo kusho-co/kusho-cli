@@ -48,12 +48,29 @@ Try the recorder with Playwright's demo site:
 node index.js demo
 ```
 
+### Extend Existing Test File
+
+Extend an existing test file with KushoAI variations:
+
+```bash
+node index.js extend path/to/your/test.js
+```
+
+### Update Credentials
+
+Update your KushoAI credentials:
+
+```bash
+node index.js credentials
+```
+
 ## Command Options
 
 - `-d, --device <device>` - Device to emulate (e.g., "iPhone 13")
 - `-v, --viewport <size>` - Viewport size (e.g., "1280,720")
 - `-t, --target <lang>` - Target language (javascript, python, etc.)
 - `-o, --output <filename>` - Output filename for generated code
+- `--no-wait-enhancement` - Disable intelligent wait enhancement
 
 ## How It Works
 

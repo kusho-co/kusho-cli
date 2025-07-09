@@ -2,6 +2,7 @@
 
 const { program } = require('commander');
 const chalk = require('chalk');
+const fs = require('fs');
 const KushoRecorder = require('./recorder');
 
 program
@@ -64,6 +65,38 @@ program
     
     const recorder = new KushoRecorder();
     await recorder.startRecording('https://demo.playwright.dev/todomvc');
+  });
+
+program
+  .command('credentials')
+  .description('Update KushoAI credentials')
+  .action(async () => {
+    const recorder = new KushoRecorder();
+    await recorder.updateCredentials();
+    console.log(chalk.green('✅ Credentials updated successfully!'));
+  });
+
+program
+  .command('extend')
+  .description('Extend an existing test file with KushoAI variations')
+  .argument('<file>', 'Path to the test file to extend')
+  .action(async (filePath) => {
+    const recorder = new KushoRecorder();
+    
+    try {
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.log(chalk.red('❌ File not found:'), filePath);
+        process.exit(1);
+      }
+      
+      console.log(chalk.blue('📁 Extending existing test file...'));
+      await recorder.extendScriptWithAPI(filePath);
+      
+    } catch (error) {
+      console.error(chalk.red('❌ Error:'), error.message);
+      process.exit(1);
+    }
   });
 
 // Show help if no command provided

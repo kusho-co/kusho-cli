@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
 const readline = require('readline');
+const https = require('https');
+const http = require('http');
 const WaitEnhancer = require('./wait-enhancer');
 
 class KushoRecorder {
@@ -15,6 +17,7 @@ class KushoRecorder {
     this.currentCode = '';
     this.waitEnhancer = new WaitEnhancer();
     this.enableWaitEnhancement = true;
+    this.credentialsFile = path.join(process.env.HOME || process.env.USERPROFILE, '.kusho-credentials');
   }
 
   async startRecording(url = '', options = {}) {
@@ -122,6 +125,9 @@ class KushoRecorder {
       }
     }
     
+    // Wrap code in a test function
+    finalCode = this.wrapInTestFunction(finalCode);
+    
     console.log(chalk.gray('─'.repeat(50)));
     console.log(finalCode);
     console.log(chalk.gray('─'.repeat(50)));
@@ -206,6 +212,9 @@ class KushoRecorder {
       const finalPath = this.saveCodeToUniqueFile(filename);
       console.log(chalk.green(`🎉 Test saved successfully!`));
       console.log(chalk.blue(`📁 File location: ${finalPath}`));
+      
+      // Open editor for user to edit the file
+      this.openEditorInTerminal(finalPath);
     });
   }
 
@@ -224,6 +233,229 @@ class KushoRecorder {
 
     fs.writeFileSync(fullPath, this.currentCode);
     return fullPath;
+  }
+
+  openEditorInTerminal(filePath) {
+    console.log(chalk.blue('📝 Opening editor...'));
+    console.log(chalk.gray('Press Ctrl+X to exit nano, or :wq to exit vim'));
+    
+    // Try terminal-based editors in order of preference
+    const terminalEditors = ['nano', 'vim', 'vi'];
+    
+    this.tryTerminalEditor(filePath, terminalEditors, 0);
+  }
+
+  tryTerminalEditor(filePath, editors, index) {
+    if (index >= editors.length) {
+      console.log(chalk.yellow('⚠️  No terminal editor found'));
+      console.log(chalk.cyan(`📁 You can manually edit: ${filePath}`));
+      return;
+    }
+
+    const editor = editors[index];
+    const editorProcess = spawn(editor, [filePath], { 
+      stdio: 'inherit'  // This allows the editor to take control of the terminal
+    });
+
+    editorProcess.on('error', (error) => {
+      // Try next editor if current one fails
+      this.tryTerminalEditor(filePath, editors, index + 1);
+    });
+
+    editorProcess.on('close', (code) => {
+      if (code === 0) {
+        console.log(chalk.green('✅ File edited successfully!'));
+        this.extendScriptWithAPI(filePath);
+      } else {
+        console.log(chalk.yellow('⚠️  Editor exited with errors'));
+      }
+    });
+  }
+
+  async getCredentials() {
+    try {
+      if (fs.existsSync(this.credentialsFile)) {
+        const data = fs.readFileSync(this.credentialsFile, 'utf8');
+        return JSON.parse(data);
+      }
+    } catch (error) {
+      console.log(chalk.yellow('⚠️  Error reading credentials file'));
+    }
+    
+    return await this.promptForCredentials();
+  }
+
+  async promptForCredentials() {
+    console.log(chalk.blue('🔐 KushoAI credentials required for script extension'));
+    
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    return new Promise((resolve) => {
+      rl.question(chalk.cyan('📧 Enter your email: '), (email) => {
+        rl.question(chalk.cyan('🔑 Enter your auth token: '), (token) => {
+          rl.close();
+          
+          const credentials = { email, token };
+          
+          // Save credentials to file
+          try {
+            fs.writeFileSync(this.credentialsFile, JSON.stringify(credentials, null, 2));
+            console.log(chalk.green('✅ Credentials saved successfully!'));
+          } catch (error) {
+            console.log(chalk.yellow('⚠️  Warning: Could not save credentials'));
+          }
+          
+          resolve(credentials);
+        });
+      });
+    });
+  }
+
+  async extendScriptWithAPI(filePath) {
+    console.log(chalk.blue('🚀 Extending script with KushoAI variations...'));
+    
+    let loadingInterval;
+    
+    try {
+      // Get credentials
+      const credentials = await this.getCredentials();
+      
+      // Read current file content
+      const currentContent = fs.readFileSync(filePath, 'utf8');
+      
+      // Start loading indicator
+      loadingInterval = this.showLoadingIndicator();
+      
+      // Call API
+      const extendedScript = await this.callExtendAPI(currentContent, credentials);
+      
+      // Stop loading indicator
+      clearInterval(loadingInterval);
+      process.stdout.write('\n');
+      
+      // Save extended script to same file
+      fs.writeFileSync(filePath, extendedScript);
+      
+      console.log(chalk.green('🎉 Script extended successfully!'));
+      console.log(chalk.blue(`📁 Updated file: ${filePath}`));
+      
+    } catch (error) {
+      // Stop loading indicator if still running
+      if (loadingInterval) {
+        clearInterval(loadingInterval);
+        process.stdout.write('\n');
+      }
+      
+      console.log(chalk.red('❌ Error extending script:'), error.message);
+      console.log(chalk.blue(`📁 Original file preserved: ${filePath}`));
+    }
+  }
+
+  showLoadingIndicator() {
+    const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    let frameIndex = 0;
+    
+    return setInterval(() => {
+      process.stdout.write(`\r${chalk.blue(frames[frameIndex])} Generating test variations...`);
+      frameIndex = (frameIndex + 1) % frames.length;
+    }, 100);
+  }
+
+  async callExtendAPI(scriptContent, credentials) {
+    return new Promise((resolve, reject) => {
+      const postData = JSON.stringify({
+        script: scriptContent
+      });
+
+      const options = {
+        hostname: 'localhost', // Replace with actual API hostname
+        port: 8080,
+        path: '/ui-testing-v2/extend-script',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          'X-User-Email': credentials.email,
+          'X-Auth-Token': credentials.token
+        },
+        rejectUnauthorized: false // Allow self-signed certificates
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              const response = JSON.parse(data);
+              resolve(response.extendedScript || response.script || data);
+            } catch (error) {
+              resolve(data); // Return raw data if not JSON
+            }
+          } else {
+            reject(new Error(`API returned status ${res.statusCode}: ${data}`));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        reject(error);
+      });
+
+      req.write(postData);
+      req.end();
+    });
+  }
+
+  async updateCredentials() {
+    console.log(chalk.blue('🔐 Update KushoAI credentials'));
+    const credentials = await this.promptForCredentials();
+    return credentials;
+  }
+
+  wrapInTestFunction(code) {
+    // Check if code is already wrapped in a test function
+    if (code.includes('test(') || code.includes('describe(')) {
+      return code;
+    }
+
+    // Extract the main functionality (skip imports and setup)
+    const lines = code.split('\n');
+    let testStartIndex = 0;
+    let imports = '';
+    let setup = '';
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('import ') || line.startsWith('const ') || line.startsWith('require(')) {
+        imports += lines[i] + '\n';
+        testStartIndex = i + 1;
+      } else if (line.includes('test =') || line.includes('browser =') || line.includes('context =')) {
+        setup += lines[i] + '\n';
+        testStartIndex = i + 1;
+      } else if (line.length > 0) {
+        break;
+      }
+    }
+
+    const testCode = lines.slice(testStartIndex).join('\n');
+    
+    // Create wrapped test function
+    const wrappedCode = `${imports}
+const { test, expect } = require('@playwright/test');
+
+test('KushoAI Generated Test', async ({ page }) => {
+${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
+});`;
+
+    return wrappedCode;
   }
 }
 
