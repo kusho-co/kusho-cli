@@ -2,6 +2,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
+const readline = require('readline');
 const WaitEnhancer = require('./wait-enhancer');
 
 class KushoRecorder {
@@ -60,6 +61,7 @@ class KushoRecorder {
 
     this.codegenProcess.on('close', (code) => {
       this.stopWatching();
+      this.promptForFilename();
     });
 
     // Start watching for file changes
@@ -171,6 +173,57 @@ class KushoRecorder {
   // Set callback for code updates
   onUpdate(callback) {
     this.onCodeUpdate = callback;
+  }
+
+  promptForFilename() {
+    if (!this.currentCode || this.currentCode.trim() === '') {
+      console.log(chalk.yellow('⚠️  No code to save'));
+      return;
+    }
+
+    console.log(chalk.green('✅ Recording completed!'));
+    
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    rl.question(chalk.cyan('💾 Enter filename for your test (without extension): '), (filename) => {
+      rl.close();
+      
+      if (!filename || filename.trim() === '') {
+        // Generate default filename with timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        filename = `kusho-test-${timestamp}`;
+      }
+
+      // Ensure .js extension
+      if (!filename.endsWith('.js')) {
+        filename += '.js';
+      }
+
+      // Save to unique file
+      const finalPath = this.saveCodeToUniqueFile(filename);
+      console.log(chalk.green(`🎉 Test saved successfully!`));
+      console.log(chalk.blue(`📁 File location: ${finalPath}`));
+    });
+  }
+
+  saveCodeToUniqueFile(filename) {
+    let counter = 1;
+    let baseName = filename.replace('.js', '');
+    let finalFilename = filename;
+    let fullPath = path.join(this.recordingDir, finalFilename);
+
+    // Check if file exists and create unique name
+    while (fs.existsSync(fullPath)) {
+      finalFilename = `${baseName}-${counter}.js`;
+      fullPath = path.join(this.recordingDir, finalFilename);
+      counter++;
+    }
+
+    fs.writeFileSync(fullPath, this.currentCode);
+    return fullPath;
   }
 }
 
