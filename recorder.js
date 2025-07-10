@@ -317,8 +317,6 @@ class KushoRecorder {
   async extendScriptWithAPI(filePath) {
     console.log(chalk.blue('🚀 Extending script with KushoAI variations...'));
     
-    let loadingInterval;
-    
     try {
       // Get credentials
       const credentials = await this.getCredentials();
@@ -326,15 +324,14 @@ class KushoRecorder {
       // Read current file content
       const currentContent = fs.readFileSync(filePath, 'utf8');
       
-      // Start loading indicator
-      loadingInterval = this.showLoadingIndicator();
+      // Step 1: Generate test cases
+      const testCases = await this.generateTestCases(currentContent, credentials);
       
-      // Call API
-      const extendedScript = await this.callExtendAPI(currentContent, credentials);
+      // Step 2: Let user edit test cases
+      const editedTestCases = await this.editTestCases(testCases);
       
-      // Stop loading indicator
-      clearInterval(loadingInterval);
-      process.stdout.write('\n');
+      // Step 3: Generate extended script with edited test cases
+      const extendedScript = await this.generateExtendedScript(currentContent, editedTestCases, credentials);
       
       // Save extended script to same file
       fs.writeFileSync(filePath, extendedScript);
@@ -343,37 +340,146 @@ class KushoRecorder {
       console.log(chalk.blue(`📁 Updated file: ${filePath}`));
       
     } catch (error) {
-      // Stop loading indicator if still running
-      if (loadingInterval) {
-        clearInterval(loadingInterval);
-        process.stdout.write('\n');
-      }
-      
       console.log(chalk.red('❌ Error extending script:'), error.message);
       console.log(chalk.blue(`📁 Original file preserved: ${filePath}`));
     }
   }
 
-  showLoadingIndicator() {
+  async generateTestCases(scriptContent, credentials) {
+    console.log(chalk.blue('🎯 Generating test cases...'));
+    
+    // Start loading indicator
+    const loadingInterval = this.showLoadingIndicator('Analyzing script and generating test cases...');
+    
+    try {
+      const testCases = await this.callTestCasesAPI(scriptContent, credentials);
+      
+      // Stop loading indicator
+      clearInterval(loadingInterval);
+      process.stdout.write('\n');
+      
+      console.log(chalk.green('✅ Test cases generated successfully!'));
+      return testCases;
+      
+    } catch (error) {
+      clearInterval(loadingInterval);
+      process.stdout.write('\n');
+      throw error;
+    }
+  }
+
+  async editTestCases(testCases) {
+    console.log(chalk.blue('📝 Opening test cases for review...'));
+    
+    // Create temporary file for test cases
+    const tempDir = path.join(__dirname, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const tempFile = path.join(tempDir, `test-cases-${timestamp}.txt`);
+    
+    // Write test cases to temp file
+    fs.writeFileSync(tempFile, testCases);
+    
+    console.log(chalk.yellow('💡 Review and edit the test cases. Save and exit when done.'));
+    console.log(chalk.gray('Each line represents a test case to be generated.'));
+    
+    // Open editor for test cases
+    await this.openEditorForFile(tempFile);
+    
+    // Read edited test cases
+    const editedTestCases = fs.readFileSync(tempFile, 'utf8');
+    
+    // Clean up temp file
+    fs.unlinkSync(tempFile);
+    
+    console.log(chalk.green('✅ Test cases reviewed and saved!'));
+    return editedTestCases;
+  }
+
+  async generateExtendedScript(originalScript, testCases, credentials) {
+    console.log(chalk.blue('🔨 Generating extended test script...'));
+    
+    // Start loading indicator
+    const loadingInterval = this.showLoadingIndicator('Creating test variations...');
+    
+    try {
+      const extendedScript = await this.callGenerateScriptAPI(originalScript, testCases, credentials);
+      
+      // Stop loading indicator
+      clearInterval(loadingInterval);
+      process.stdout.write('\n');
+      
+      console.log(chalk.green('✅ Extended script generated successfully!'));
+      return extendedScript;
+      
+    } catch (error) {
+      clearInterval(loadingInterval);
+      process.stdout.write('\n');
+      throw error;
+    }
+  }
+
+  showLoadingIndicator(message = 'Generating test variations...') {
     const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
     let frameIndex = 0;
     
     return setInterval(() => {
-      process.stdout.write(`\r${chalk.blue(frames[frameIndex])} Generating test variations...`);
+      process.stdout.write(`\r${chalk.blue(frames[frameIndex])} ${message}`);
       frameIndex = (frameIndex + 1) % frames.length;
     }, 100);
   }
 
-  async callExtendAPI(scriptContent, credentials) {
+  async openEditorForFile(filePath) {
+    console.log(chalk.blue('📝 Opening editor...'));
+    console.log(chalk.gray('Press Ctrl+X to exit nano, or :wq to exit vim'));
+    
+    // Try terminal-based editors in order of preference
+    const terminalEditors = ['nano', 'vim', 'vi'];
+    
+    return new Promise((resolve, reject) => {
+      this.tryTerminalEditorForFile(filePath, terminalEditors, 0, resolve, reject);
+    });
+  }
+
+  tryTerminalEditorForFile(filePath, editors, index, resolve, reject) {
+    if (index >= editors.length) {
+      reject(new Error('No terminal editor found'));
+      return;
+    }
+
+    const editor = editors[index];
+    const editorProcess = spawn(editor, [filePath], { 
+      stdio: 'inherit'  // This allows the editor to take control of the terminal
+    });
+
+    editorProcess.on('error', (error) => {
+      // Try next editor if current one fails
+      this.tryTerminalEditorForFile(filePath, editors, index + 1, resolve, reject);
+    });
+
+    editorProcess.on('close', (code) => {
+      if (code === 0) {
+        console.log(chalk.green('✅ File edited successfully!'));
+        resolve();
+      } else {
+        reject(new Error('Editor exited with errors'));
+      }
+    });
+  }
+
+  async callTestCasesAPI(scriptContent, credentials) {
     return new Promise((resolve, reject) => {
       const postData = JSON.stringify({
         script: scriptContent
       });
 
       const options = {
-        hostname: 'localhost', // Replace with actual API hostname
+        hostname: 'localhost',
         port: 8080,
-        path: '/ui-testing-v2/extend-script',
+        path: '/ui-testing-v2/generate-test-cases',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -381,7 +487,62 @@ class KushoRecorder {
           'X-User-Email': credentials.email,
           'X-Auth-Token': credentials.token
         },
-        rejectUnauthorized: false // Allow self-signed certificates
+        rejectUnauthorized: false
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              const response = JSON.parse(data);
+              if (response.success && response.test_cases) {
+                resolve(response.test_cases);
+              } else {
+                reject(new Error('Invalid response format from test cases API'));
+              }
+            } catch (error) {
+              reject(new Error('Failed to parse test cases response'));
+            }
+          } else {
+            reject(new Error(`Test cases API returned status ${res.statusCode}: ${data}`));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        reject(error);
+      });
+
+      req.write(postData);
+      req.end();
+    });
+  }
+
+  async callGenerateScriptAPI(originalScript, testCases, credentials) {
+    return new Promise((resolve, reject) => {
+      const postData = JSON.stringify({
+        script: originalScript,
+        test_cases: testCases
+      });
+
+      const options = {
+        hostname: 'localhost',
+        port: 8080,
+        path: '/ui-testing-v2/generate-test-scripts',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          'X-User-Email': credentials.email,
+          'X-Auth-Token': credentials.token
+        },
+        rejectUnauthorized: false
       };
 
       const req = https.request(options, (res) => {
@@ -400,7 +561,7 @@ class KushoRecorder {
               resolve(data); // Return raw data if not JSON
             }
           } else {
-            reject(new Error(`API returned status ${res.statusCode}: ${data}`));
+            reject(new Error(`Generate script API returned status ${res.statusCode}: ${data}`));
           }
         });
       });
