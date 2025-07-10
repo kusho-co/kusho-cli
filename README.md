@@ -64,6 +64,34 @@ Update your KushoAI credentials:
 node index.js credentials
 ```
 
+### Run Tests
+
+Run a specific test file:
+
+```bash
+node index.js run path/to/your/test.js
+```
+
+Run the latest recording:
+
+```bash
+node index.js run
+```
+
+Run tests in headed mode (show browser):
+
+```bash
+node index.js run --headed
+node index.js run path/to/test.js --headed
+```
+
+Record test runs (video + trace):
+
+```bash
+node index.js run --record
+node index.js run path/to/test.js --record --headed
+```
+
 ## Command Options
 
 - `-d, --device <device>` - Device to emulate (e.g., "iPhone 13")

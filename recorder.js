@@ -395,7 +395,7 @@ class KushoRecorder {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {
               const response = JSON.parse(data);
-              resolve(response.extendedScript || response.script || data);
+              resolve(response.extended_script || response.script || data);
             } catch (error) {
               resolve(data); // Return raw data if not JSON
             }
@@ -456,6 +456,123 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
 });`;
 
     return wrappedCode;
+  }
+
+  getLatestRecording() {
+    try {
+      if (!fs.existsSync(this.recordingDir)) {
+        return null;
+      }
+
+      const files = fs.readdirSync(this.recordingDir)
+        .filter(file => file.endsWith('.js'))
+        .map(file => {
+          const filePath = path.join(this.recordingDir, file);
+          const stats = fs.statSync(filePath);
+          return {
+            name: file,
+            path: filePath,
+            mtime: stats.mtime
+          };
+        })
+        .sort((a, b) => b.mtime - a.mtime);
+
+      return files.length > 0 ? files[0].path : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async runTest(filePath, options = {}) {
+    console.log(chalk.blue('🧪 Running Playwright test...'));
+    console.log(chalk.gray(`📁 File: ${filePath}`));
+    
+    // Use absolute path to ensure Playwright finds the file
+    const absolutePath = path.resolve(filePath);
+    const args = ['playwright', 'test', absolutePath];
+    
+    // Add headed/headless option
+    if (options.headed) {
+      args.push('--headed');
+      console.log(chalk.cyan('👁️  Running in headed mode (browser visible)'));
+    } else {
+      console.log(chalk.cyan('🔍 Running in headless mode'));
+    }
+
+    // Add recording options
+    if (options.record) {
+      // Create test-results directory if it doesn't exist
+      const testResultsDir = path.join(process.cwd(), 'test-results');
+      if (!fs.existsSync(testResultsDir)) {
+        fs.mkdirSync(testResultsDir, { recursive: true });
+      }
+
+      // Add trace and video recording using project config
+      args.push('--project=recording');
+      
+      console.log(chalk.magenta('🎥 Recording test run (video + trace)'));
+      console.log(chalk.gray(`📁 Results will be saved to: ${testResultsDir}`));
+    }
+
+    // Add reporter for better output
+    args.push('--reporter=line');
+
+    return new Promise((resolve, reject) => {
+      const testProcess = spawn('npx', args, {
+        stdio: 'inherit',
+        cwd: process.cwd() // Ensure we're in the right directory
+      });
+
+      testProcess.on('error', (error) => {
+        reject(new Error(`Failed to run test: ${error.message}`));
+      });
+
+      testProcess.on('close', (code) => {
+        if (code === 0) {
+          console.log(chalk.green('✅ Test completed successfully!'));
+          if (options.record) {
+            this.showRecordingResults();
+          }
+          resolve();
+        } else {
+          console.log(chalk.yellow(`⚠️  Test finished with exit code: ${code}`));
+          if (options.record) {
+            this.showRecordingResults();
+          }
+          resolve(); // Don't reject, as test failures are normal
+        }
+      });
+    });
+  }
+
+  showRecordingResults() {
+    const testResultsDir = path.join(process.cwd(), 'test-results');
+    
+    if (fs.existsSync(testResultsDir)) {
+      console.log(chalk.green('📹 Test recording completed!'));
+      console.log(chalk.blue('🔍 View results:'));
+      
+      // Find trace files
+      const traceFiles = fs.readdirSync(testResultsDir, { recursive: true })
+        .filter(file => file.toString().endsWith('.zip'))
+        .slice(0, 3); // Show only latest 3
+      
+      traceFiles.forEach(file => {
+        console.log(chalk.cyan(`  • npx playwright show-trace test-results/${file}`));
+      });
+      
+      // Find video files
+      const videoFiles = fs.readdirSync(testResultsDir, { recursive: true })
+        .filter(file => file.toString().endsWith('.webm'))
+        .slice(0, 3); // Show only latest 3
+      
+      if (videoFiles.length > 0) {
+        console.log(chalk.blue('🎬 Video recordings:'));
+        videoFiles.forEach(file => {
+          console.log(chalk.cyan(`  • test-results/${file}`));
+        });
+      }
+    }
   }
 }
 

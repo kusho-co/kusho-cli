@@ -15,6 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "playwright": "^1.40.0",
+    "@playwright/test": "^1.40.0",
     "commander": "^11.1.0",
     "chalk": "^4.1.2"
   }
