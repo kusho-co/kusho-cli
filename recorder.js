@@ -203,9 +203,13 @@ class KushoRecorder {
         filename = `kusho-test-${timestamp}`;
       }
 
-      // Ensure .js extension
-      if (!filename.endsWith('.js')) {
-        filename += '.js';
+      // Ensure .test.js extension for Playwright
+      if (!filename.endsWith('.test.js')) {
+        if (filename.endsWith('.js')) {
+          filename = filename.replace('.js', '.test.js');
+        } else {
+          filename += '.test.js';
+        }
       }
 
       // Save to unique file
@@ -220,13 +224,13 @@ class KushoRecorder {
 
   saveCodeToUniqueFile(filename) {
     let counter = 1;
-    let baseName = filename.replace('.js', '');
+    let baseName = filename.replace('.test.js', '');
     let finalFilename = filename;
     let fullPath = path.join(this.recordingDir, finalFilename);
 
     // Check if file exists and create unique name
     while (fs.existsSync(fullPath)) {
-      finalFilename = `${baseName}-${counter}.js`;
+      finalFilename = `${baseName}-${counter}.test.js`;
       fullPath = path.join(this.recordingDir, finalFilename);
       counter++;
     }
@@ -626,7 +630,7 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
       }
 
       const files = fs.readdirSync(this.recordingDir)
-        .filter(file => file.endsWith('.js'))
+        .filter(file => file.endsWith('.test.js') || file.endsWith('.js'))
         .map(file => {
           const filePath = path.join(this.recordingDir, file);
           const stats = fs.statSync(filePath);
