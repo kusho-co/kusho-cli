@@ -337,11 +337,13 @@ class KushoRecorder {
       // Step 3: Generate extended script with edited test cases
       const extendedScript = await this.generateExtendedScript(currentContent, editedTestCases, credentials);
       
-      // Save extended script to same file
-      fs.writeFileSync(filePath, extendedScript);
+      // Save extended script to new file with -extended suffix
+      const extendedFilePath = this.createExtendedFilePath(filePath);
+      fs.writeFileSync(extendedFilePath, extendedScript);
       
       console.log(chalk.green('🎉 Script extended successfully!'));
-      console.log(chalk.blue(`📁 Updated file: ${filePath}`));
+      console.log(chalk.blue(`📁 Original file preserved: ${filePath}`));
+      console.log(chalk.blue(`📁 Extended script saved: ${extendedFilePath}`));
       
     } catch (error) {
       console.log(chalk.red('❌ Error extending script:'), error.message);
@@ -621,6 +623,20 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
 });`;
 
     return wrappedCode;
+  }
+
+  createExtendedFilePath(originalPath) {
+    const dir = path.dirname(originalPath);
+    const ext = path.extname(originalPath);
+    const baseName = path.basename(originalPath, ext);
+    
+    // Handle both .js and .test.js extensions
+    if (originalPath.endsWith('.test.js')) {
+      const nameWithoutTestExt = baseName.replace(/\.test$/, '');
+      return path.join(dir, `${nameWithoutTestExt}-extended.test.js`);
+    } else {
+      return path.join(dir, `${baseName}-extended${ext}`);
+    }
   }
 
   getLatestRecording() {
