@@ -35,7 +35,12 @@ cd kusho-cli
 
 ```bash
 npm install
+
+# Link the package globally to use 'kusho' command
+npm link
 ```
+
+After linking, you can use the clean `kusho` command syntax throughout your terminal.
 
 ## Workflow
 
@@ -46,8 +51,8 @@ npm install
          │
          ▼
 ┌─────────────────┐     ┌─────────────────┐
-│ node index.js   │────▶│ Record UI       │
-│ record [URL]    │     │ interactions    │
+│ kusho record    │────▶│ Record UI       │
+│ [URL]           │     │ interactions    │
 │ [--output file] │     │ in browser      │
 └─────────────────┘     └─────────────────┘
          │                       │
@@ -60,8 +65,7 @@ npm install
          │
          ▼
 ┌─────────────────┐
-│ node index.js   │
-│ extend          │
+│ kusho extend    │
 │ [test-file.js]  │
 └─────────────────┘
          │
@@ -74,8 +78,8 @@ npm install
          │
          ▼
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│ node index.js   │     │ node index.js   │     │ node index.js   │
-│ run [test-name] │     │ run [test-name] │     │ run-recording   │
+│ kusho run       │     │ kusho run       │     │ kusho           │
+│ [test-name]     │     │ [test-name]     │     │ run-recording   │
 │                 │     │ --headed        │     │ [name]          │
 │                 │     │ --record        │     │ (debug orig.)   │
 └─────────────────┘     └─────────────────┘     └─────────────────┘

@@ -705,8 +705,8 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
       console.log(chalk.gray(`📁 Results will be saved to: ${testResultsDir}`));
     }
 
-    // Add reporter for better output
-    args.push('--reporter=line');
+    // Use the configured HTML reporter from playwright.config.js
+    // (removing --reporter=line override to allow HTML report generation)
 
     console.log(chalk.gray(`🚀 Using project: ${project}`));
 
