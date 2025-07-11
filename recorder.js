@@ -487,14 +487,19 @@ class KushoRecorder {
     }
   }
 
-  showLoadingIndicator(message = 'Generating test variations...') {
-    const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  showLoadingIndicator(message = 'Kusho is thinking...') {
+    const emojiFrames = ['🤖', '🧠', '💡', '🧪', '💨', '🔪', '🌀', '🔍'];
+    const classicFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    const frames = [...emojiFrames, ...classicFrames];
+    const spinnerWidth = 4;
     let frameIndex = 0;
-    
+  
     return setInterval(() => {
-      process.stdout.write(`\r${chalk.blue(frames[frameIndex])} ${message}`);
-      frameIndex = (frameIndex + 1) % frames.length;
-    }, 100);
+      const frame = frames[frameIndex % frames.length];
+      const paddedFrame = frame.padEnd(spinnerWidth, ' ');
+      process.stdout.write(`\r${paddedFrame}${chalk.green(message)}`);
+      frameIndex++;
+    }, 120);
   }
 
   async openEditorForFile(filePath) {
