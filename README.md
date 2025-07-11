@@ -2,10 +2,90 @@
 
 CLI tool for recording UI interactions as Playwright code and turning them into full-fledged test suites.
 
+## Prerequisites
+
+### Node.js Installation (Node 18+)
+
+Install Node.js using nvm (Node Version Manager):
+
+```bash
+# Install nvm (if not already installed)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# Restart your terminal or run:
+source ~/.bashrc
+
+# Install and use Node.js 18 or later
+nvm install 18
+nvm use 18
+
+# Verify installation
+node --version
+npm --version
+```
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/your-username/kusho-cli.git
+cd kusho-cli
+```
+
 ## Installation
 
 ```bash
 npm install
+```
+
+## Workflow
+
+```
+┌─────────────────┐
+│  Start Here     │
+└─────────────────┘
+         │
+         ▼
+┌─────────────────┐     ┌─────────────────┐
+│ node index.js   │────▶│ Record UI       │
+│ record [URL]    │     │ interactions    │
+│ [--output file] │     │ in browser      │
+└─────────────────┘     └─────────────────┘
+         │                       │
+         ▼                       ▼
+┌─────────────────┐     ┌─────────────────┐
+│ Save to         │     │ Generated       │
+│ recordings/     │◀────│ Playwright code │
+│ folder          │     │ (saved to file) │
+└─────────────────┘     └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ node index.js   │
+│ extend          │
+│ [test-file.js]  │
+└─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ AI enhances     │
+│ test & saves to │
+│ extended-tests/ │
+└─────────────────┘
+         │
+         ▼
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│ node index.js   │     │ node index.js   │     │ node index.js   │
+│ run [test-name] │     │ run [test-name] │     │ run-recording   │
+│                 │     │ --headed        │     │ [name]          │
+│                 │     │ --record        │     │ (debug orig.)   │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│ Run tests       │     │ Run tests with  │     │ Run original    │
+│ headlessly      │     │ browser visible │     │ recording for   │
+│                 │     │ & record video  │     │ debugging       │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
 ```
 
 ## Usage
@@ -123,7 +203,3 @@ The recorder creates a `kusho-tests/` folder structure:
 - `kusho-tests/extended-tests/` - AI-enhanced test suites
 
 Generated code is displayed in real-time in the terminal as you perform UI interactions.
-
-## Development
-
-This tool is a wrapper around Playwright's built-in `codegen` command, providing programmatic access to the generated test code through file watching and process management.
