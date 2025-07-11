@@ -46,7 +46,7 @@ After linking, you can use the `kusho` command syntax throughout your terminal.
 
 ## Workflow
 
-```
+```html
 ┌─────────────────┐
 │  Start Here     │
 └─────────────────┘
