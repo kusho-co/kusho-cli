@@ -9,8 +9,10 @@ const WaitEnhancer = require('./wait-enhancer');
 
 class KushoRecorder {
   constructor() {
-    this.outputFile = path.join(__dirname, 'recordings', 'generated-test.js');
-    this.recordingDir = path.join(__dirname, 'recordings');
+    this.testsDir = path.join(__dirname, 'kusho-tests');
+    this.outputFile = path.join(this.testsDir, 'recordings', 'generated-test.js');
+    this.recordingDir = path.join(this.testsDir, 'recordings');
+    this.extendedDir = path.join(this.testsDir, 'extended-tests');
     this.codegenProcess = null;
     this.watcher = null;
     this.onCodeUpdate = null;
@@ -337,7 +339,7 @@ class KushoRecorder {
       // Step 3: Generate extended script with edited test cases
       const extendedScript = await this.generateExtendedScript(currentContent, editedTestCases, credentials);
       
-      // Save extended script to new file with -extended suffix
+      // Save extended script to extended-tests folder
       const extendedFilePath = this.createExtendedFilePath(filePath);
       fs.writeFileSync(extendedFilePath, extendedScript);
       
@@ -626,16 +628,20 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
   }
 
   createExtendedFilePath(originalPath) {
-    const dir = path.dirname(originalPath);
+    // Ensure extended-tests directory exists
+    if (!fs.existsSync(this.extendedDir)) {
+      fs.mkdirSync(this.extendedDir, { recursive: true });
+    }
+    
     const ext = path.extname(originalPath);
     const baseName = path.basename(originalPath, ext);
     
-    // Handle both .js and .test.js extensions
+    // Handle both .js and .test.js extensions, preserve original filename
     if (originalPath.endsWith('.test.js')) {
       const nameWithoutTestExt = baseName.replace(/\.test$/, '');
-      return path.join(dir, `${nameWithoutTestExt}-extended.test.js`);
+      return path.join(this.extendedDir, `${nameWithoutTestExt}.test.js`);
     } else {
-      return path.join(dir, `${baseName}-extended${ext}`);
+      return path.join(this.extendedDir, `${baseName}${ext}`);
     }
   }
 
@@ -668,9 +674,21 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
     console.log(chalk.blue('🧪 Running Playwright test...'));
     console.log(chalk.gray(`📁 File: ${filePath}`));
     
-    // Use absolute path to ensure Playwright finds the file
-    const absolutePath = path.resolve(filePath);
-    const args = ['playwright', 'test', absolutePath];
+    // Check if file needs to be wrapped in test function
+    const content = fs.readFileSync(filePath, 'utf8');
+    if (!content.includes('test(') && !content.includes('describe(')) {
+      console.log(chalk.yellow('⚠️  File is not in test format, converting...'));
+      const wrappedContent = this.wrapInTestFunction(content);
+      fs.writeFileSync(filePath, wrappedContent);
+      console.log(chalk.green('✅ File converted to test format'));
+    }
+    
+    // Determine which project to use based on file path and options
+    const project = this.getProjectName(filePath, options);
+    
+    // Use relative path to file within the project directory
+    const relativePath = this.getRelativePathForProject(filePath, project);
+    const args = ['playwright', 'test', `--project=${project}`, relativePath];
     
     // Add headed/headless option
     if (options.headed) {
@@ -680,23 +698,17 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
       console.log(chalk.cyan('🔍 Running in headless mode'));
     }
 
-    // Add recording options
+    // Show recording info if enabled
     if (options.record) {
-      // Create test-results directory if it doesn't exist
-      const testResultsDir = path.join(process.cwd(), 'test-results');
-      if (!fs.existsSync(testResultsDir)) {
-        fs.mkdirSync(testResultsDir, { recursive: true });
-      }
-
-      // Add trace and video recording using project config
-      args.push('--project=recording');
-      
       console.log(chalk.magenta('🎥 Recording test run (video + trace)'));
+      const testResultsDir = path.join(process.cwd(), 'test-results');
       console.log(chalk.gray(`📁 Results will be saved to: ${testResultsDir}`));
     }
 
     // Add reporter for better output
     args.push('--reporter=line');
+
+    console.log(chalk.gray(`🚀 Using project: ${project}`));
 
     return new Promise((resolve, reject) => {
       const testProcess = spawn('npx', args, {
@@ -726,6 +738,25 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
     });
   }
 
+  getProjectName(filePath, options) {
+    const isRecording = filePath.includes(path.join('kusho-tests', 'recordings'));
+    const isExtended = filePath.includes(path.join('kusho-tests', 'extended-tests'));
+    
+    if (isRecording) {
+      return options.record ? 'recordings-record' : 'recordings';
+    } else if (isExtended) {
+      return options.record ? 'extended-record' : 'extended';
+    } else {
+      // Fallback for files outside standard directories
+      return options.record ? 'recordings-record' : 'recordings';
+    }
+  }
+
+  getRelativePathForProject(filePath, project) {
+    // Get just the filename since project configs specify testDir
+    return path.basename(filePath);
+  }
+
   showRecordingResults() {
     const testResultsDir = path.join(process.cwd(), 'test-results');
     
@@ -753,6 +784,269 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
           console.log(chalk.cyan(`  • test-results/${file}`));
         });
       }
+    }
+  }
+
+  getRecordingPath(filename) {
+    // Handle different filename formats
+    if (filename.endsWith('.test.js')) {
+      return path.join(this.recordingDir, filename);
+    } else if (filename.endsWith('.js')) {
+      return path.join(this.recordingDir, filename);
+    } else {
+      // Try .test.js first, then .js
+      const testPath = path.join(this.recordingDir, `${filename}.test.js`);
+      if (fs.existsSync(testPath)) {
+        return testPath;
+      }
+      return path.join(this.recordingDir, `${filename}.js`);
+    }
+  }
+
+  getExtendedPath(filename) {
+    // Handle different filename formats
+    if (filename.endsWith('.test.js')) {
+      return path.join(this.extendedDir, filename);
+    } else if (filename.endsWith('.js')) {
+      return path.join(this.extendedDir, filename);
+    } else {
+      // Try .test.js first, then .js
+      const testPath = path.join(this.extendedDir, `${filename}.test.js`);
+      if (fs.existsSync(testPath)) {
+        return testPath;
+      }
+      return path.join(this.extendedDir, `${filename}.js`);
+    }
+  }
+
+  listRecordings() {
+    if (!fs.existsSync(this.recordingDir)) {
+      console.log(chalk.gray('  No recordings folder found'));
+      return;
+    }
+
+    const files = fs.readdirSync(this.recordingDir)
+      .filter(file => file.endsWith('.test.js') || file.endsWith('.js'))
+      .map(file => {
+        const filePath = path.join(this.recordingDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          name: file,
+          mtime: stats.mtime
+        };
+      })
+      .sort((a, b) => b.mtime - a.mtime) // Sort by creation time (newest first)
+      .map(item => item.name);
+
+    if (files.length === 0) {
+      console.log(chalk.gray('  No recordings found'));
+    } else {
+      files.forEach(file => {
+        console.log(chalk.cyan(`  • ${file}`));
+      });
+    }
+  }
+
+  listExtendedTests() {
+    if (!fs.existsSync(this.extendedDir)) {
+      console.log(chalk.gray('  No extended-tests folder found'));
+      return;
+    }
+
+    const files = fs.readdirSync(this.extendedDir)
+      .filter(file => file.endsWith('.test.js') || file.endsWith('.js'))
+      .map(file => {
+        const filePath = path.join(this.extendedDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          name: file,
+          mtime: stats.mtime
+        };
+      })
+      .sort((a, b) => b.mtime - a.mtime) // Sort by creation time (newest first)
+      .map(item => item.name);
+
+    if (files.length === 0) {
+      console.log(chalk.gray('  No extended tests found'));
+    } else {
+      files.forEach(file => {
+        console.log(chalk.cyan(`  • ${file}`));
+      });
+    }
+  }
+
+  async chooseExtendedTest() {
+    if (!fs.existsSync(this.extendedDir)) {
+      console.log(chalk.red('❌ No extended-tests folder found'));
+      return null;
+    }
+
+    const files = fs.readdirSync(this.extendedDir)
+      .filter(file => file.endsWith('.test.js') || file.endsWith('.js'))
+      .map(file => {
+        const filePath = path.join(this.extendedDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          name: file,
+          mtime: stats.mtime
+        };
+      })
+      .sort((a, b) => b.mtime - a.mtime) // Sort by creation time (newest first)
+      .map(item => item.name);
+
+    if (files.length === 0) {
+      console.log(chalk.red('❌ No extended tests found'));
+      return null;
+    }
+
+    console.log(chalk.blue('📋 Available extended tests:'));
+    files.forEach((file, index) => {
+      console.log(chalk.cyan(`  ${index + 1}. ${file}`));
+    });
+    console.log(chalk.cyan(`  ${files.length + 1}. latest`));
+
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    return new Promise((resolve) => {
+      rl.question(chalk.yellow('Select a test (number or name): '), (answer) => {
+        rl.close();
+        
+        const trimmed = answer.trim();
+        
+        // Check if it's a number
+        const num = parseInt(trimmed);
+        if (!isNaN(num)) {
+          if (num >= 1 && num <= files.length) {
+            resolve(files[num - 1]);
+            return;
+          } else if (num === files.length + 1) {
+            resolve('latest');
+            return;
+          }
+        }
+        
+        // Check if it's a filename
+        if (trimmed === 'latest') {
+          resolve('latest');
+          return;
+        }
+        
+        const matchingFile = files.find(file => 
+          file === trimmed || 
+          file === `${trimmed}.test.js` || 
+          file === `${trimmed}.js`
+        );
+        
+        if (matchingFile) {
+          resolve(matchingFile);
+        } else {
+          console.log(chalk.red('❌ Invalid selection'));
+          resolve(null);
+        }
+      });
+    });
+  }
+
+  async chooseRecording() {
+    if (!fs.existsSync(this.recordingDir)) {
+      console.log(chalk.red('❌ No recordings folder found'));
+      return null;
+    }
+
+    const files = fs.readdirSync(this.recordingDir)
+      .filter(file => file.endsWith('.test.js') || file.endsWith('.js'))
+      .map(file => {
+        const filePath = path.join(this.recordingDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          name: file,
+          mtime: stats.mtime
+        };
+      })
+      .sort((a, b) => b.mtime - a.mtime) // Sort by creation time (newest first)
+      .map(item => item.name);
+
+    if (files.length === 0) {
+      console.log(chalk.red('❌ No recordings found'));
+      return null;
+    }
+
+    console.log(chalk.blue('📋 Available recordings:'));
+    files.forEach((file, index) => {
+      console.log(chalk.cyan(`  ${index + 1}. ${file}`));
+    });
+    console.log(chalk.cyan(`  ${files.length + 1}. latest`));
+
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    return new Promise((resolve) => {
+      rl.question(chalk.yellow('Select a recording (number or name): '), (answer) => {
+        rl.close();
+        
+        const trimmed = answer.trim();
+        
+        // Check if it's a number
+        const num = parseInt(trimmed);
+        if (!isNaN(num)) {
+          if (num >= 1 && num <= files.length) {
+            resolve(files[num - 1]);
+            return;
+          } else if (num === files.length + 1) {
+            resolve('latest');
+            return;
+          }
+        }
+        
+        // Check if it's a filename
+        if (trimmed === 'latest') {
+          resolve('latest');
+          return;
+        }
+        
+        const matchingFile = files.find(file => 
+          file === trimmed || 
+          file === `${trimmed}.test.js` || 
+          file === `${trimmed}.js`
+        );
+        
+        if (matchingFile) {
+          resolve(matchingFile);
+        } else {
+          console.log(chalk.red('❌ Invalid selection'));
+          resolve(null);
+        }
+      });
+    });
+  }
+
+  getLatestExtendedTest() {
+    try {
+      if (!fs.existsSync(this.extendedDir)) {
+        return null;
+      }
+
+      const files = fs.readdirSync(this.extendedDir)
+        .filter(file => file.endsWith('.test.js') || file.endsWith('.js'))
+        .map(file => {
+          const filePath = path.join(this.extendedDir, file);
+          const stats = fs.statSync(filePath);
+          return {
+            name: file,
+            path: filePath,
+            mtime: stats.mtime
+          };
+        })
+        .sort((a, b) => b.mtime - a.mtime);
+
+      return files.length > 0 ? files[0].path : null;
+    } catch (error) {
+      return null;
     }
   }
 }

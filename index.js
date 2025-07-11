@@ -101,30 +101,44 @@ program
 
 program
   .command('run')
-  .description('Run a test file using Playwright')
-  .argument('[file]', 'Path to the test file to run (defaults to latest recording)')
+  .description('Run an extended test file from extended-tests folder')
+  .argument('[filename]', 'Filename, "latest", or leave empty to choose from list')
   .option('--headed', 'Run tests in headed mode (show browser)')
   .option('--headless', 'Run tests in headless mode (default)')
   .option('--record', 'Record test run with video and trace')
-  .action(async (filePath, options) => {
+  .action(async (filename, options) => {
     const recorder = new KushoRecorder();
     
     try {
-      // If no file specified, use latest from recordings
-      if (!filePath) {
-        filePath = recorder.getLatestRecording();
+      let filePath;
+      
+      if (!filename) {
+        // Show list and let user choose
+        filename = await recorder.chooseExtendedTest();
+        if (!filename) {
+          console.log(chalk.yellow('⚠️  No test selected'));
+          process.exit(0);
+        }
+      }
+      
+      if (filename === 'latest') {
+        filePath = recorder.getLatestExtendedTest();
         if (!filePath) {
-          console.log(chalk.red('❌ No recordings found. Create a recording first with:'));
-          console.log(chalk.cyan('  node index.js record'));
+          console.log(chalk.red('❌ No extended tests found'));
           process.exit(1);
         }
-        console.log(chalk.blue(`📁 Using latest recording: ${filePath}`));
+        console.log(chalk.blue(`📁 Using latest extended test: ${filePath}`));
       } else {
-        // Check if file exists
+        filePath = recorder.getExtendedPath(filename);
+        
         if (!fs.existsSync(filePath)) {
-          console.log(chalk.red('❌ File not found:'), filePath);
+          console.log(chalk.red('❌ Extended test not found:'), filePath);
+          console.log(chalk.yellow('💡 Available extended tests:'));
+          recorder.listExtendedTests();
           process.exit(1);
         }
+        
+        console.log(chalk.blue(`📁 Running extended test: ${filePath}`));
       }
       
       await recorder.runTest(filePath, options);
@@ -134,6 +148,57 @@ program
       process.exit(1);
     }
   });
+
+program
+  .command('run-recording')
+  .description('Run a test file from recordings folder')
+  .argument('[filename]', 'Filename, "latest", or leave empty to choose from list')
+  .option('--headed', 'Run tests in headed mode (show browser)')
+  .option('--headless', 'Run tests in headless mode (default)')
+  .option('--record', 'Record test run with video and trace')
+  .action(async (filename, options) => {
+    const recorder = new KushoRecorder();
+    
+    try {
+      let filePath;
+      
+      if (!filename) {
+        // Show list and let user choose
+        filename = await recorder.chooseRecording();
+        if (!filename) {
+          console.log(chalk.yellow('⚠️  No recording selected'));
+          process.exit(0);
+        }
+      }
+      
+      if (filename === 'latest') {
+        filePath = recorder.getLatestRecording();
+        if (!filePath) {
+          console.log(chalk.red('❌ No recordings found'));
+          process.exit(1);
+        }
+        console.log(chalk.blue(`📁 Using latest recording: ${filePath}`));
+      } else {
+        filePath = recorder.getRecordingPath(filename);
+        
+        if (!fs.existsSync(filePath)) {
+          console.log(chalk.red('❌ Recording not found:'), filePath);
+          console.log(chalk.yellow('💡 Available recordings:'));
+          recorder.listRecordings();
+          process.exit(1);
+        }
+        
+        console.log(chalk.blue(`📁 Running recording: ${filePath}`));
+      }
+      
+      await recorder.runTest(filePath, options);
+      
+    } catch (error) {
+      console.error(chalk.red('❌ Error:'), error.message);
+      process.exit(1);
+    }
+  });
+
 
 // Show help if no command provided
 if (!process.argv.slice(2).length) {

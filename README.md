@@ -64,32 +64,40 @@ Update your KushoAI credentials:
 node index.js credentials
 ```
 
-### Run Tests
+### Run Extended Tests
 
-Run a specific test file:
-
-```bash
-node index.js run path/to/your/test.js
-```
-
-Run the latest recording:
+Run an extended test from the extended-tests folder:
 
 ```bash
+# Choose from interactive list
 node index.js run
+
+# Run specific test
+node index.js run login-test
+
+# Run latest test
+node index.js run latest
+
+# Run with options
+node index.js run login-test --headed --record
 ```
 
-Run tests in headed mode (show browser):
+### Run Recordings
+
+Run a test from the recordings folder:
 
 ```bash
-node index.js run --headed
-node index.js run path/to/test.js --headed
-```
+# Choose from interactive list
+node index.js run-recording
 
-Record test runs (video + trace):
+# Run specific recording
+node index.js run-recording login-test
 
-```bash
-node index.js run --record
-node index.js run path/to/test.js --record --headed
+# Run latest recording
+node index.js run-recording latest
+
+# Run with options
+node index.js run-recording login-test --headed
 ```
 
 ## Command Options
@@ -110,7 +118,11 @@ node index.js run path/to/test.js --record --headed
 
 ## Output
 
-The recorder creates a `recordings/` folder where all generated test files are stored. Generated code is displayed in real-time in the terminal as you perform UI interactions.
+The recorder creates a `kusho-tests/` folder structure:
+- `kusho-tests/recordings/` - Original recorded tests
+- `kusho-tests/extended-tests/` - AI-enhanced test suites
+
+Generated code is displayed in real-time in the terminal as you perform UI interactions.
 
 ## Development
 

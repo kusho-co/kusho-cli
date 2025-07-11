@@ -110,8 +110,10 @@ lib/
 out/
 
 # Recordings and generated files
-recordings/
+kusho-tests/
 generated-tests/
+test-results/
+playwright-report/
 *.webm
 *.mp4
 *.mov

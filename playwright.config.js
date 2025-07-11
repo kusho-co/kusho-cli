@@ -12,7 +12,7 @@ import { defineConfig, devices } from '@playwright/test';
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './recordings',
+  testDir: './kusho-tests',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -38,18 +38,27 @@ export default defineConfig({
 
   },
 
-  /* Configure projects for major browsers */
+  /* Configure projects for recordings and extended tests */
   projects: [
     {
-      name: 'chromium',
+      name: 'recordings',
+      testDir: './kusho-tests/recordings',
       use: {
         ...devices['Desktop Chrome'],
-        // storageState: './auth.json'
       },
     },
 
     {
-      name: 'recording',
+      name: 'extended',
+      testDir: './kusho-tests/extended-tests',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+
+    {
+      name: 'recordings-record',
+      testDir: './kusho-tests/recordings',
       use: { 
         ...devices['Desktop Chrome'],
         trace: 'on',
@@ -59,20 +68,30 @@ export default defineConfig({
     },
 
     {
-      name: 'firefox',
-      use: {
-        ...devices['Desktop Firefox'],
-        // storageState: './auth.json'
+      name: 'extended-record',
+      testDir: './kusho-tests/extended-tests',
+      use: { 
+        ...devices['Desktop Chrome'],
+        trace: 'on',
+        video: 'on',
+        screenshot: 'on',
       },
     },
 
-    {
-      name: 'webkit',
-      use: {
-        ...devices['Desktop Safari'],
-        // storageState: './auth.json'
-      },
-    },
+    // Additional browsers can be uncommented if needed
+    // {
+    //   name: 'firefox',
+    //   use: {
+    //     ...devices['Desktop Firefox'],
+    //   },
+    // },
+
+    // {
+    //   name: 'webkit',
+    //   use: {
+    //     ...devices['Desktop Safari'],
+    //   },
+    // },
 
     /* Test against mobile viewports. */
     // {
