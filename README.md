@@ -1,6 +1,8 @@
-# Kusho CLI
+# KushoAI CLI
 
-CLI tool for recording UI interactions as Playwright code and turning them into full-fledged test suites.
+CLI tool for recording UI interactions and generating comprehensive test suites with AI.
+
+KushoAI CLI takes your recorded user flows and generates exhaustive test variations. Record your user flow once, and KushoAI creates multiple test cases with different inputs, edge cases, and scenarios to provide thorough test coverage.
 
 ## Prerequisites
 
