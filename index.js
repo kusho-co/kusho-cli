@@ -79,18 +79,42 @@ program
 program
   .command('extend')
   .description('Extend an existing test file with KushoAI variations')
-  .argument('<file>', 'Path to the test file to extend')
-  .action(async (filePath) => {
+  .argument('[filename]', 'Filename, "latest", or leave empty to choose from list')
+  .action(async (filename) => {
     const recorder = new KushoRecorder();
     
     try {
-      // Check if file exists
-      if (!fs.existsSync(filePath)) {
-        console.log(chalk.red('❌ File not found:'), filePath);
-        process.exit(1);
+      let filePath;
+      
+      if (!filename) {
+        // Show list and let user choose
+        filename = await recorder.chooseRecording();
+        if (!filename) {
+          console.log(chalk.yellow('⚠️  No recording selected'));
+          process.exit(0);
+        }
       }
       
-      console.log(chalk.blue('📁 Extending existing test file...'));
+      if (filename === 'latest') {
+        filePath = recorder.getLatestRecording();
+        if (!filePath) {
+          console.log(chalk.red('❌ No recordings found'));
+          process.exit(1);
+        }
+        console.log(chalk.blue(`📁 Using latest recording: ${filePath}`));
+      } else {
+        filePath = recorder.getRecordingPath(filename);
+        
+        if (!fs.existsSync(filePath)) {
+          console.log(chalk.red('❌ Recording not found:'), filePath);
+          console.log(chalk.yellow('💡 Available recordings:'));
+          recorder.listRecordings();
+          process.exit(1);
+        }
+        
+        console.log(chalk.blue(`📁 Extending recording: ${filePath}`));
+      }
+      
       await recorder.extendScriptWithAPI(filePath);
       
     } catch (error) {
