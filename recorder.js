@@ -320,6 +320,48 @@ class KushoRecorder {
     });
   }
 
+  async promptForNewFilename(currentFilename) {
+    console.log(chalk.blue('📝 Please provide a new filename for the extended test'));
+    
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    return new Promise((resolve) => {
+      rl.question(chalk.cyan(`💾 Enter new filename (current: ${currentFilename}): `), (newFilename) => {
+        rl.close();
+        
+        if (!newFilename || newFilename.trim() === '') {
+          resolve(null); // User wants to cancel
+          return;
+        }
+        
+        let finalFilename = newFilename.trim();
+        
+        // Ensure .test.js extension if the original had it
+        if (currentFilename.endsWith('.test.js') && !finalFilename.endsWith('.test.js')) {
+          if (finalFilename.endsWith('.js')) {
+            finalFilename = finalFilename.replace('.js', '.test.js');
+          } else {
+            finalFilename += '.test.js';
+          }
+        } else if (currentFilename.endsWith('.js') && !finalFilename.endsWith('.js')) {
+          finalFilename += '.js';
+        }
+        
+        // Check if the new filename also exists
+        const newPath = path.join(this.extendedDir, finalFilename);
+        if (fs.existsSync(newPath)) {
+          console.log(chalk.red(`❌ File ${finalFilename} also exists. Please choose a different name.`));
+          resolve(null);
+        } else {
+          resolve(finalFilename);
+        }
+      });
+    });
+  }
+
   async extendScriptWithAPI(filePath) {
     console.log(chalk.blue('🚀 Extending script with KushoAI variations...'));
     
@@ -340,7 +382,22 @@ class KushoRecorder {
       const extendedScript = await this.generateExtendedScript(currentContent, editedTestCases, credentials);
       
       // Save extended script to extended-tests folder
-      const extendedFilePath = this.createExtendedFilePath(filePath);
+      let extendedFilePath = this.createExtendedFilePath(filePath);
+      
+      // Check if file already exists and prompt for new name if needed
+      if (fs.existsSync(extendedFilePath)) {
+        const currentFilename = path.basename(extendedFilePath);
+        console.log(chalk.yellow(`⚠️  File already exists: ${currentFilename}`));
+        
+        const newFilename = await this.promptForNewFilename(currentFilename);
+        if (newFilename) {
+          extendedFilePath = path.join(this.extendedDir, newFilename);
+        } else {
+          console.log(chalk.red('❌ Extension cancelled'));
+          return;
+        }
+      }
+      
       fs.writeFileSync(extendedFilePath, extendedScript);
       
       console.log(chalk.green('🎉 Script extended successfully!'));
