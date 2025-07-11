@@ -40,7 +40,7 @@ npm install
 npm link
 ```
 
-After linking, you can use the clean `kusho` command syntax throughout your terminal.
+After linking, you can use the `kusho` command syntax throughout your terminal.
 
 ## Workflow
 
@@ -116,14 +116,6 @@ Record with mobile/tablet emulation:
 node index.js record --device "iPhone 13" https://example.com
 ```
 
-### Custom Output File
-
-Save generated code to a specific file:
-
-```bash
-node index.js record --output my-test.js
-```
-
 ### Demo
 
 Try the recorder with Playwright's demo site:
@@ -191,14 +183,6 @@ node index.js run-recording login-test --headed
 - `-t, --target <lang>` - Target language (javascript, python, etc.)
 - `-o, --output <filename>` - Output filename for generated code
 - `--no-wait-enhancement` - Disable intelligent wait enhancement
-
-## How It Works
-
-1. **Real-time code capture** - Shows generated Playwright code as you interact with the browser
-2. **File watching** - Monitors the output file for changes and displays updates
-3. **Device emulation** - Support for mobile/tablet recording scenarios
-4. **Custom output** - Save recordings to specified files
-5. **Graceful shutdown** - Press Ctrl+C to save final code and exit
 
 ## Output
 
