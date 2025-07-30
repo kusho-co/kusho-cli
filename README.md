@@ -1,4 +1,4 @@
-# KushoAI CLI
+# [KushoAI CLI](https://github.com/kusho-co/kusho-cli/)
 
 CLI tool for recording UI interactions and generating comprehensive test suites with AI.
 
