@@ -7,6 +7,9 @@ const https = require('https');
 const http = require('http');
 const WaitEnhancer = require('./wait-enhancer');
 
+const BASE_URL = 'be.kusho.ai';
+const PORT = 443;
+
 class KushoRecorder {
   constructor() {
     this.testsDir = path.join(__dirname, 'kusho-tests');
@@ -548,8 +551,8 @@ class KushoRecorder {
       });
 
       const options = {
-        hostname: 'localhost',
-        port: 8080,
+        hostname: BASE_URL,
+        port: PORT,
         path: '/ui-testing-v2/generate-test-cases',
         method: 'POST',
         headers: {
@@ -603,8 +606,8 @@ class KushoRecorder {
       });
 
       const options = {
-        hostname: 'localhost',
-        port: 8080,
+        hostname: BASE_URL,
+        port: PORT,
         path: '/ui-testing-v2/generate-test-scripts',
         method: 'POST',
         headers: {
