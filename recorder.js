@@ -379,7 +379,7 @@ class KushoRecorder {
       const editedTestCases = await this.editTestCases(testCases);
       
       // Step 3: Generate extended script with edited test cases
-      const extendedScript = await this.generateExtendedScript(currentContent, editedTestCases, credentials);
+      const {extendedScript, remaining} = await this.generateExtendedScript(currentContent, editedTestCases, credentials);
       
       // Save extended script to extended-tests folder
       let extendedFilePath = this.createExtendedFilePath(filePath);
@@ -403,6 +403,7 @@ class KushoRecorder {
       console.log(chalk.green('🎉 Script extended successfully!'));
       console.log(chalk.blue(`📁 Original file preserved: ${filePath}`));
       console.log(chalk.blue(`📁 Extended script saved: ${extendedFilePath}`));
+      console.log(chalk.yellow(`# No. of generations remaining: ${remaining}`));
       
     } catch (error) {
       console.log(chalk.red('❌ Error extending script:'), error.message);
@@ -471,14 +472,14 @@ class KushoRecorder {
     const loadingInterval = this.showLoadingIndicator('Creating test variations...');
     
     try {
-      const extendedScript = await this.callGenerateScriptAPI(originalScript, testCases, credentials);
+      const {extended_script: extendedScript, remaining_generations: remaining} = await this.callGenerateScriptAPI(originalScript, testCases, credentials);
       
       // Stop loading indicator
       clearInterval(loadingInterval);
       process.stdout.write('\n');
       
       console.log(chalk.green('✅ Extended script generated successfully!'));
-      return extendedScript;
+      return {extendedScript, remaining};
       
     } catch (error) {
       clearInterval(loadingInterval);
@@ -626,9 +627,9 @@ class KushoRecorder {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             try {
               const response = JSON.parse(data);
-              resolve(response.extended_script || response.script || data);
+              resolve(response);
             } catch (error) {
-              resolve(data); // Return raw data if not JSON
+              resolve(data); // Return raw data if not JSON, maybe fail here
             }
           } else {
             reject(new Error(`Generate script API returned status ${res.statusCode}: ${data}`));
