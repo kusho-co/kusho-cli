@@ -101,13 +101,13 @@ After linking, you can use the `kusho` command syntax throughout your terminal.
 Start recording UI interactions (opens browser + inspector):
 
 ```bash
-node index.js record
+kusho record
 ```
 
 ### Record from Specific URL
 
 ```bash
-node index.js record https://example.com
+kusho record https://example.com
 ```
 
 ### Device Emulation
@@ -115,7 +115,7 @@ node index.js record https://example.com
 Record with mobile/tablet emulation:
 
 ```bash
-node index.js record --device "iPhone 13" https://example.com
+kusho record --device "iPhone 13" https://example.com
 ```
 
 ### Demo
@@ -123,7 +123,7 @@ node index.js record --device "iPhone 13" https://example.com
 Try the recorder with Playwright's demo site:
 
 ```bash
-node index.js demo
+kusho demo
 ```
 
 ### Extend Existing Test File
@@ -131,7 +131,7 @@ node index.js demo
 Extend an existing test file with KushoAI variations:
 
 ```bash
-node index.js extend path/to/your/test.js
+kusho extend path/to/your/test.js
 ```
 
 ### Update Credentials
@@ -139,7 +139,7 @@ node index.js extend path/to/your/test.js
 Update your KushoAI credentials:
 
 ```bash
-node index.js credentials
+kusho credentials
 ```
 
 ### Run Extended Tests
@@ -148,16 +148,16 @@ Run an extended test from the extended-tests folder:
 
 ```bash
 # Choose from interactive list
-node index.js run
+kusho run
 
 # Run specific test
-node index.js run login-test
+kusho run login-test
 
 # Run latest test
-node index.js run latest
+kusho run latest
 
 # Run with options
-node index.js run login-test --headed --record
+kusho run login-test --headed --record
 ```
 
 ### Run Recordings
@@ -166,16 +166,16 @@ Run a test from the recordings folder:
 
 ```bash
 # Choose from interactive list
-node index.js run-recording
+kusho run-recording
 
 # Run specific recording
-node index.js run-recording login-test
+kusho run-recording login-test
 
 # Run latest recording
-node index.js run-recording latest
+kusho run-recording latest
 
 # Run with options
-node index.js run-recording login-test --headed
+kusho run-recording login-test --headed
 ```
 
 ## Command Options
