@@ -10,13 +10,20 @@
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["playwright", "cli", "ui", "testing", "automation"],
+  "keywords": [
+    "playwright",
+    "cli",
+    "ui",
+    "testing",
+    "automation"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "playwright": "^1.40.0",
     "@playwright/test": "^1.40.0",
+    "chalk": "^4.1.2",
     "commander": "^11.1.0",
-    "chalk": "^4.1.2"
+    "cross-spawn": "^7.0.6",
+    "playwright": "^1.40.0"
   }
 }
