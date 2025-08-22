@@ -24,7 +24,15 @@ nvm use 18
 # Verify installation
 node --version
 npm --version
-```
+``` 
+
+Please note that these instructions are for bash. The setup might differ a little bit for other terminals. 
+
+You can alternatively download the binaries from [here](https://nodejs.org/en/download/) and install it.
+
+### Git (Required)
+
+_TODO_
 
 ### Terminal Editor (Required)
 
@@ -35,8 +43,7 @@ A terminal editor is essential for editing test scripts during generation. Insta
 # Install Vim
 winget install vim.vim
 
-# Or install Git (includes vim)
-winget install Git.Git
+# might need adding the vim program files to path and terminal restart before it starts working
 ```
 
 #### macOS (Homebrew)
@@ -79,6 +86,8 @@ cd kusho-cli
 
 ```bash
 npm install
+
+npx playwright install  # this will install the browser binaries
 
 # Link the package globally to use 'kusho' command
 npm link
