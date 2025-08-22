@@ -249,7 +249,7 @@ class KushoRecorder {
     console.log(chalk.gray('Press Ctrl+X to exit nano, or :wq to exit vim'));
     
     // Try terminal-based editors in order of preference
-    const terminalEditors = ['nano', 'vim', 'vi'];
+    const terminalEditors = ['vim', 'nano', 'vi'];
     
     this.tryTerminalEditor(filePath, terminalEditors, 0);
   }
@@ -276,7 +276,7 @@ class KushoRecorder {
         console.log(chalk.green('✅ File edited successfully!'));
         this.extendScriptWithAPI(filePath);
       } else {
-        console.log(chalk.yellow('⚠️  Editor exited with errors'));
+        console.log(chalk.yellow('⚠️  Editor exited with errors while saving recording'));
       }
     });
   }
@@ -511,7 +511,7 @@ class KushoRecorder {
     console.log(chalk.gray('Press Ctrl+X to exit nano, or :wq to exit vim'));
     
     // Try terminal-based editors in order of preference
-    const terminalEditors = ['nano', 'vim', 'vi'];
+    const terminalEditors = ['vim', 'nano', 'vi'];
     
     return new Promise((resolve, reject) => {
       this.tryTerminalEditorForFile(filePath, terminalEditors, 0, resolve, reject);
@@ -539,7 +539,7 @@ class KushoRecorder {
         console.log(chalk.green('✅ File edited successfully!'));
         resolve();
       } else {
-        reject(new Error('Editor exited with errors'));
+        reject(new Error('Editor exited with errors while saving tests'));
       }
     });
   }
