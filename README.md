@@ -231,6 +231,8 @@ For advanced users, extend an existing test file with KushoAI variations:
 
 ```bash
 kusho extend path/to/your/test.js
+
+kusho extend latest  # to extend the latest recording
 ```
 
 ### Step 5: Run Tests
@@ -240,6 +242,9 @@ Execute your generated test suite and get comprehensive reports:
 ```bash
 # Interactive test selection (recommended)
 kusho run
+
+# Run latest test
+kusho run latest
 
 # Run specific test
 kusho run your-test-name
