@@ -241,6 +241,10 @@ class KushoRecorder {
     }
 
     fs.writeFileSync(fullPath, this.currentCode);
+    
+    // Track recording step completion
+    this.trackUserStep('record');
+    
     return fullPath;
   }
 
@@ -313,6 +317,9 @@ class KushoRecorder {
           try {
             fs.writeFileSync(this.credentialsFile, JSON.stringify(credentials, null, 2));
             console.log(chalk.green('✅ Credentials saved successfully!'));
+            
+            // Track credentials step completion
+            this.trackUserStep('credentials', credentials);
           } catch (error) {
             console.log(chalk.yellow('⚠️  Warning: Could not save credentials'));
           }
@@ -408,6 +415,9 @@ class KushoRecorder {
       console.log(chalk.blue(`📁 Extended script saved: ${extendedFilePath}`));
       console.log(chalk.yellow(`# No. of generations remaining: ${remaining}`));
       
+      // Track generation step completion
+      this.trackUserStep('generation');
+      
     } catch (error) {
       console.log(chalk.red('❌ Error extending script:'), error.message);
       console.log(chalk.blue(`📁 Original file preserved: ${filePath}`));
@@ -465,6 +475,10 @@ class KushoRecorder {
     fs.unlinkSync(tempFile);
     
     console.log(chalk.green('✅ Test cases reviewed and saved!'));
+    
+    // Track tests step completion
+    this.trackUserStep('tests');
+    
     return editedTestCases;
   }
 
@@ -739,6 +753,8 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
   async runTest(filePath, options = {}) {
     console.log(chalk.blue('🧪 Running Playwright test...'));
     console.log(chalk.gray(`📁 File: ${filePath}`));
+    // Track run step completion
+    this.trackUserStep('run');
     
     // Check if file needs to be wrapped in test function
     const content = fs.readFileSync(filePath, 'utf8');
@@ -1112,6 +1128,67 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
 
       return files.length > 0 ? files[0].path : null;
     } catch (error) {
+      return null;
+    }
+  }
+
+  async trackUserStep(step, credentials = null) {
+    try {
+      // Get credentials if not provided
+      if (!credentials) {
+        credentials = await this.getCredentials();
+      }
+
+      const postData = JSON.stringify({
+        step: step
+      });
+
+      const options = {
+        hostname: BASE_URL,
+        port: PORT,
+        path: '/ui-testing-v2/user/status',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          'X-User-Email': credentials.email,
+          'X-Auth-Token': credentials.token
+        },
+        rejectUnauthorized: false
+      };
+
+      return new Promise((resolve, reject) => {
+        const req = https.request(options, (res) => {
+          let data = '';
+
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              // console.log(chalk.gray(`📊 Step tracked: ${step}`));
+              resolve(data);
+            } else {
+              // Don't throw error for tracking failures, just log
+              console.log(chalk.gray(`⚠️  Failed to track step: ${step}`));
+              resolve(null);
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          // Don't throw error for tracking failures, just log
+          console.log(chalk.gray(`⚠️  Error tracking step: ${step}`));
+          resolve(null);
+        });
+
+        req.write(postData);
+        req.end();
+      });
+    } catch (error) {
+      // Don't throw error for tracking failures, just log
+      console.log(chalk.gray(`⚠️  Error tracking step: ${step}`));
       return null;
     }
   }
