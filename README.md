@@ -32,7 +32,7 @@ You can alternatively download the binaries from [here](https://nodejs.org/en/do
 
 ### Git (Required)
 
-_TODO_
+Make sure Git is installed on your system. Git is essential for version control and helps in managing your project setup seamlessly. You can download it for free from the official Git [website](https://git-scm.com/downloads).
 
 ### Terminal Editor (Required)
 
