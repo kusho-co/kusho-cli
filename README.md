@@ -69,7 +69,7 @@ sudo apt-get install nano
 #### Alternative Downloads
 - [Vim for Windows](https://www.vim.org/download.php)
 - [Nano for Windows](https://www.nano-editor.org/download.php)
-- [Git for Windows](https://git-scm.com/download/win) (includes vim)
+- [Git for Windows](https://git-scm.com/download/win)
 
 #### Test Your Installation
 ```bash
