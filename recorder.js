@@ -7,8 +7,12 @@ const https = require('https');
 const http = require('http');
 const WaitEnhancer = require('./wait-enhancer');
 
-const BASE_URL = 'be.kusho.ai';
-const PORT = 443;
+// Set KUSHO_API_URL env var to point at a different backend (e.g. localhost:8080 for dev)
+const _apiUrl = process.env.KUSHO_API_URL || 'https://be.kusho.ai';
+const _parsedUrl = new URL(_apiUrl);
+const BASE_URL = _parsedUrl.hostname;
+const PORT = parseInt(_parsedUrl.port) || (_parsedUrl.protocol === 'https:' ? 443 : 80);
+const USE_HTTPS = _parsedUrl.protocol === 'https:';
 
 class KushoRecorder {
   constructor() {
@@ -278,7 +282,15 @@ class KushoRecorder {
     editorProcess.on('close', (code) => {
       if (code === 0) {
         console.log(chalk.green('✅ File edited successfully!'));
-        this.extendScriptWithAPI(filePath);
+
+        // Prompt for optional instructions before generation starts
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        rl.question(chalk.cyan('\n💡 Any specific instructions for generating test variations? (Press Enter to skip): '), (answer) => {
+          rl.close();
+          const instructions = answer.trim();
+          if (instructions) console.log(chalk.cyan(`📋 Instructions noted: ${instructions}`));
+          this.extendScriptWithAPI(filePath, instructions);
+        });
       } else {
         console.log(chalk.yellow('⚠️  Editor exited with errors while saving recording'));
       }
@@ -372,7 +384,7 @@ class KushoRecorder {
     });
   }
 
-  async extendScriptWithAPI(filePath) {
+  async extendScriptWithAPI(filePath, instructions = '') {
     console.log(chalk.blue('🚀 Extending script with KushoAI variations...'));
     
     try {
@@ -383,13 +395,13 @@ class KushoRecorder {
       const currentContent = fs.readFileSync(filePath, 'utf8');
       
       // Step 1: Generate test cases
-      const testCases = await this.generateTestCases(currentContent, credentials);
+      const testCases = await this.generateTestCases(currentContent, credentials, instructions);
       
       // Step 2: Let user edit test cases
       const editedTestCases = await this.editTestCases(testCases);
       
       // Step 3: Generate extended script with edited test cases
-      const {extendedScript, remaining} = await this.generateExtendedScript(currentContent, editedTestCases, credentials);
+      const {extendedScript, remaining} = await this.generateExtendedScript(currentContent, editedTestCases, credentials, instructions);
       
       // Save extended script to extended-tests folder
       let extendedFilePath = this.createExtendedFilePath(filePath);
@@ -414,6 +426,7 @@ class KushoRecorder {
       console.log(chalk.blue(`📁 Original file preserved: ${filePath}`));
       console.log(chalk.blue(`📁 Extended script saved: ${extendedFilePath}`));
       console.log(chalk.yellow(`# No. of generations remaining: ${remaining}`));
+      console.log(chalk.gray('💡 Tip: Use `kusho edit` to make further changes to the generated script.'));
       
       // Track generation step completion
       this.trackUserStep('generation');
@@ -424,14 +437,14 @@ class KushoRecorder {
     }
   }
 
-  async generateTestCases(scriptContent, credentials) {
+  async generateTestCases(scriptContent, credentials, instructions = '') {
     console.log(chalk.blue('🎯 Generating test cases...'));
     
     // Start loading indicator
     const loadingInterval = this.showLoadingIndicator('Analyzing script and generating test cases...');
     
     try {
-      const testCases = await this.callTestCasesAPI(scriptContent, credentials);
+      const testCases = await this.callTestCasesAPI(scriptContent, credentials, instructions);
       
       // Stop loading indicator
       clearInterval(loadingInterval);
@@ -482,14 +495,14 @@ class KushoRecorder {
     return editedTestCases;
   }
 
-  async generateExtendedScript(originalScript, testCases, credentials) {
+  async generateExtendedScript(originalScript, testCases, credentials, instructions = '') {
     console.log(chalk.blue('🔨 Generating extended test script...'));
     
     // Start loading indicator
     const loadingInterval = this.showLoadingIndicator('Creating test variations...');
     
     try {
-      const {extended_script: extendedScript, remaining_generations: remaining} = await this.callGenerateScriptAPI(originalScript, testCases, credentials);
+      const {extended_script: extendedScript, remaining_generations: remaining} = await this.callGenerateScriptAPI(originalScript, testCases, credentials, instructions);
       
       // Stop loading indicator
       clearInterval(loadingInterval);
@@ -558,10 +571,11 @@ class KushoRecorder {
     });
   }
 
-  async callTestCasesAPI(scriptContent, credentials) {
+  async callTestCasesAPI(scriptContent, credentials, instructions = '') {
     return new Promise((resolve, reject) => {
       const postData = JSON.stringify({
-        script: scriptContent
+        script: scriptContent,
+        ...(instructions && { instructions })
       });
 
       const options = {
@@ -578,7 +592,7 @@ class KushoRecorder {
         rejectUnauthorized: false
       };
 
-      const req = https.request(options, (res) => {
+      const req = (USE_HTTPS ? https : http).request(options, (res) => {
         let data = '';
 
         res.on('data', (chunk) => {
@@ -612,11 +626,12 @@ class KushoRecorder {
     });
   }
 
-  async callGenerateScriptAPI(originalScript, testCases, credentials) {
+  async callGenerateScriptAPI(originalScript, testCases, credentials, instructions = '') {
     return new Promise((resolve, reject) => {
       const postData = JSON.stringify({
         script: originalScript,
-        test_cases: testCases
+        test_cases: testCases,
+        ...(instructions && { instructions })
       });
 
       const options = {
@@ -633,7 +648,7 @@ class KushoRecorder {
         rejectUnauthorized: false
       };
 
-      const req = https.request(options, (res) => {
+      const req = (USE_HTTPS ? https : http).request(options, (res) => {
         let data = '';
 
         res.on('data', (chunk) => {
@@ -661,6 +676,112 @@ class KushoRecorder {
       req.write(postData);
       req.end();
     });
+  }
+
+  async callEditScriptAPI(script, instruction, credentials) {
+    return new Promise((resolve, reject) => {
+      const postData = JSON.stringify({
+        script,
+        instruction
+      });
+
+      const options = {
+        hostname: BASE_URL,
+        port: PORT,
+        path: '/ui-testing-v2/edit-test-script',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          'X-User-Email': credentials.email,
+          'X-Auth-Token': credentials.token
+        },
+        rejectUnauthorized: false
+      };
+
+      const req = (USE_HTTPS ? https : http).request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              const response = JSON.parse(data);
+              if (response.success && response.edited_script) {
+                resolve(response);
+              } else {
+                reject(new Error(response.error || 'Invalid response from edit API'));
+              }
+            } catch (error) {
+              reject(new Error('Failed to parse edit script response'));
+            }
+          } else {
+            reject(new Error(`Edit script API returned status ${res.statusCode}: ${data}`));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        reject(error);
+      });
+
+      req.write(postData);
+      req.end();
+    });
+  }
+
+  async postGenerationEditLoop(filePath, credentials) {
+    console.log(chalk.blue('\n✏️  Edit mode'));
+    console.log(chalk.gray('Request changes to the generated tests in plain English.'));
+    console.log(chalk.gray('Examples: "add assertions for the page title", "add error case for empty password"'));
+    console.log(chalk.gray('Type "done" or leave blank to finish.\n'));
+
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const ask = () => new Promise((res) => rl.question(chalk.cyan('✏️  Edit instruction (or "done" to exit): '), res));
+
+    while (true) {
+      const instruction = (await ask()).trim();
+
+      if (!instruction || instruction.toLowerCase() === 'done' || instruction.toLowerCase() === 'exit') {
+        rl.close();
+        console.log(chalk.green('\n✅ Finished! Your tests are ready.'));
+        console.log(chalk.blue(`📁 Final file: ${filePath}`));
+        break;
+      }
+
+      console.log(chalk.blue(`\n🔧 Applying: "${instruction}"...`));
+      const loadingInterval = this.showLoadingIndicator('Applying edits...');
+
+      try {
+        const currentScript = fs.readFileSync(filePath, 'utf8');
+        const result = await this.callEditScriptAPI(currentScript, instruction, credentials);
+        clearInterval(loadingInterval);
+        process.stdout.write('\n');
+        fs.writeFileSync(filePath, result.edited_script);
+        console.log(chalk.green('✅ Edit applied successfully!'));
+        if (result.remaining_generations !== null && result.remaining_generations !== undefined) {
+          console.log(chalk.yellow(`# No. of generations remaining: ${result.remaining_generations}`));
+        }
+      } catch (error) {
+        clearInterval(loadingInterval);
+        process.stdout.write('\n');
+        console.log(chalk.red(`❌ Edit failed: ${error.message}`));
+        console.log(chalk.gray('File was not modified. Try a different instruction.'));
+      }
+    }
+  }
+
+  async editExtendedScript(filePath) {
+    console.log(chalk.blue(`\n✏️  Editing extended script: ${filePath}`));
+    try {
+      const credentials = await this.getCredentials();
+      await this.postGenerationEditLoop(filePath, credentials);
+    } catch (error) {
+      console.log(chalk.red('❌ Error editing script:'), error.message);
+    }
   }
 
   async updateCredentials() {
@@ -1158,7 +1279,7 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
       };
 
       return new Promise((resolve, reject) => {
-        const req = https.request(options, (res) => {
+        const req = (USE_HTTPS ? https : http).request(options, (res) => {
           let data = '';
 
           res.on('data', (chunk) => {

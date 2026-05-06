@@ -219,6 +219,26 @@ After recording, Kusho AI generates comprehensive test scenarios that open in yo
 
 **Save the file to proceed to test generation.**
 
+#### Adding Custom Instructions (Optional)
+
+After you save the recorded Playwright script, KushoAI prompts for custom instructions:
+
+```
+💡 Any specific instructions for generating test variations? (Press Enter to skip):
+```
+
+This is your chance to provide custom guidance for the AI:
+
+```bash
+# Examples of what you can enter:
+"add error cases for empty fields"
+"include tests for special characters in input"
+"test with very long text strings"
+"add negative test scenarios"
+```
+
+These instructions are used when generating test variations and help the AI create more relevant tests for your specific needs. Skip this step by pressing Enter if you don't need custom instructions.
+
 ### Step 4: Generate Exhaustive Test Script
 
 Kusho combines your recording and customized tests to create a comprehensive, executable test script. This process:
@@ -236,6 +256,32 @@ kusho extend path/to/your/test.js
 
 kusho extend latest  # to extend the latest recording
 ```
+
+### Edit Generated Tests
+
+After generating tests, you can iteratively refine them using natural language:
+
+```bash
+# Edit a specific test file
+kusho edit your-test-name
+
+# Edit the latest generated test
+kusho edit latest
+
+# Choose from interactive list
+kusho edit
+```
+
+**Edit mode examples:**
+
+```
+✏️  Edit instruction: add assertions for page title
+✏️  Edit instruction: add error case for empty password
+✏️  Edit instruction: add timeout handling
+✏️  Edit instruction: add screenshot on failure
+```
+
+Type `done` or leave blank to finish editing. Each edit applies your natural language instruction to modify the test file in place.
 
 ### Step 5: Run Tests
 

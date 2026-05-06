@@ -224,6 +224,53 @@ program
   });
 
 
+program
+  .command('edit')
+  .description('Interactively edit an extended test script using natural language instructions')
+  .argument('[filename]', 'Filename, "latest", or leave empty to choose from list')
+  .action(async (filename) => {
+    const recorder = new KushoRecorder();
+
+    try {
+      let filePath;
+
+      if (!filename) {
+        filename = await recorder.chooseExtendedTest();
+        if (!filename) {
+          console.log(chalk.yellow('⚠️  No test selected'));
+          process.exit(0);
+        }
+      }
+
+      if (filename === 'latest') {
+        filePath = recorder.getLatestExtendedTest();
+        if (!filePath) {
+          console.log(chalk.red('❌ No extended tests found'));
+          process.exit(1);
+        }
+        console.log(chalk.blue(`📁 Using latest extended test: ${filePath}`));
+      } else {
+        filePath = recorder.getExtendedPath(filename);
+
+        if (!fs.existsSync(filePath)) {
+          console.log(chalk.red('❌ Extended test not found:'), filePath);
+          console.log(chalk.yellow('💡 Available extended tests:'));
+          recorder.listExtendedTests();
+          process.exit(1);
+        }
+
+        console.log(chalk.blue(`📁 Editing extended test: ${filePath}`));
+      }
+
+      await recorder.editExtendedScript(filePath);
+
+    } catch (error) {
+      console.error(chalk.red('❌ Error:'), error.message);
+      process.exit(1);
+    }
+  });
+
+
 // Show help if no command provided
 if (!process.argv.slice(2).length) {
   program.outputHelp();
