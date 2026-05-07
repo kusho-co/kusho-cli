@@ -1138,7 +1138,11 @@ class KushoRecorder {
       }
     }
 
-    const testCode = lines.slice(testStartIndex).join('\n');
+    let testCode = lines.slice(testStartIndex).join('\n');
+
+    // Playwright codegen often emits an async IIFE. Await it so the outer test
+    // does not finish early and trigger worker teardown mid-recording.
+    testCode = testCode.replace(/^(\s*)\(async\s*\(\)\s*=>\s*\{/gm, '$1await (async () => {');
     
     // Create wrapped test function
     const wrappedCode = `${imports}
