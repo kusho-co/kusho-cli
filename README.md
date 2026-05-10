@@ -204,7 +204,7 @@ kusho demo
 
 ### Step 3: Review & Edit Tests
 
-After recording, Kusho AI generates comprehensive test scenarios that open in your terminal editor:
+After recording, Kusho saves the recorded Playwright script and opens it in your terminal editor for review before generation starts:
 
 **What you can do:**
 - **Review Generated Tests**: See all test variations created from your recording
@@ -219,15 +219,15 @@ After recording, Kusho AI generates comprehensive test scenarios that open in yo
 
 **Save the file to proceed to test generation.**
 
-#### Adding Custom Instructions (Optional)
+#### Describe What to Generate (Optional)
 
-After you save the recorded Playwright script, KushoAI prompts for custom instructions:
+After you save the recorded Playwright script, KushoAI prompts for a natural-language generation request:
 
 ```
-💡 Any specific instructions for generating test variations? (Press Enter to skip):
+💬 What should Kusho generate from this recording? (Press Enter for default single-file generation):
 ```
 
-This is your chance to provide custom guidance for the AI:
+This is your chance to tell Kusho what kind of suite to generate and how it should be organized:
 
 ```bash
 # Examples of what you can enter:
@@ -235,17 +235,34 @@ This is your chance to provide custom guidance for the AI:
 "include tests for special characters in input"
 "test with very long text strings"
 "add negative test scenarios"
+"create smoke and negative tests in separate files"
+"group auth tests under auth/ and checkout tests under checkout/"
 ```
 
-These instructions are used when generating test variations and help the AI create more relevant tests for your specific needs. Skip this step by pressing Enter if you don't need custom instructions.
+If you press Enter, Kusho uses the default single-file generation flow.
+
+If you provide a request, Kusho first plans the output structure, shows you a preview, and lets you accept or refine it before generation starts.
 
 ### Step 4: Generate Exhaustive Test Script
 
-Kusho combines your recording and customized tests to create a comprehensive, executable test script. This process:
+Kusho combines your recording and reviewed test cases to create an executable Playwright output. This process:
 - Merges your original recording with customized test scenarios
 - Creates multiple test variations and edge cases
 - Converts everything into optimized Playwright code
-- Generates a comprehensive test script ready for execution
+- Generates either a single output file or a grouped multi-file suite depending on your request
+
+If you provide a structured request, Kusho shows a proposed output tree before generation:
+
+```text
+🧭 Proposed output:
+  kusho-tests/extended-tests/checkout-suite/
+    auth/login-negative.test.js
+    checkout/checkout-smoke.test.js
+
+Accept plan? [Y/refine/n]
+```
+
+Accepted multi-file generations are written as a bundle under `kusho-tests/extended-tests/<bundle-name>/`.
 
 ### Extend Existing Test File (Advanced)
 
@@ -256,6 +273,11 @@ kusho extend path/to/your/test.js
 
 kusho extend latest  # to extend the latest recording
 ```
+
+`kusho extend` uses the same generation request flow as `kusho record`:
+- Press Enter for default single-file generation
+- Or describe the suite you want in natural language
+- Review the proposed structure if Kusho plans multiple files
 
 ### Edit Generated Tests
 
@@ -283,6 +305,8 @@ kusho edit
 
 Type `done` or leave blank to finish editing. Each edit applies your natural language instruction to modify the test file in place.
 
+`kusho edit` currently works on one generated file at a time. If you generated a multi-file bundle, choose a file inside the bundle instead of the bundle directory itself.
+
 ### Step 5: Run Tests
 
 Execute your generated test suite and get comprehensive reports:
@@ -296,6 +320,12 @@ kusho run latest
 
 # Run specific test
 kusho run your-test-name
+
+# Run a generated bundle directory
+kusho run checkout-suite
+
+# Run a nested generated file
+kusho run auth/login-negative.test.js
 
 # Run with additional options
 kusho run your-test-name --headed --record
@@ -332,6 +362,12 @@ kusho run
 
 # Run specific test
 kusho run login-test
+
+# Run a generated bundle directory
+kusho run checkout-suite
+
+# Run a nested generated file path
+kusho run auth/login-negative.test.js
 
 # Run latest test
 kusho run latest
@@ -371,5 +407,20 @@ kusho run-recording login-test --headed
 The recorder creates a `kusho-tests/` folder structure:
 - `kusho-tests/recordings/` - Original recorded tests
 - `kusho-tests/extended-tests/` - AI-enhanced test suites
+
+Single-file generation continues to save one file directly under `kusho-tests/extended-tests/`.
+
+Structured multi-file generation saves a bundle directory under `kusho-tests/extended-tests/` and includes a manifest file:
+
+```text
+kusho-tests/
+  extended-tests/
+    checkout-suite/
+      .kusho-bundle.json
+      auth/
+        login-negative.test.js
+      checkout/
+        checkout-smoke.test.js
+```
 
 Generated code is displayed in real-time in the terminal as you perform UI interactions.
