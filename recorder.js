@@ -24,6 +24,8 @@ class KushoRecorder {
     this.watcher = null;
     this.onCodeUpdate = null;
     this.currentCode = '';
+    this.currentRawCode = '';
+    this.pendingFileRead = null;
     this.waitEnhancer = new WaitEnhancer();
     this.enableWaitEnhancement = true;
     this.credentialsFile = path.join(process.env.HOME || process.env.USERPROFILE, '.kusho-credentials');
@@ -71,9 +73,12 @@ class KushoRecorder {
       console.error(chalk.red('❌ Failed to start recorder:'), error.message);
     });
 
-    this.codegenProcess.on('close', (code) => {
-      this.stopWatching();
-      this.promptForFilename();
+    this.codegenProcess.on('close', () => {
+      setTimeout(() => {
+        this.refreshCurrentCodeFromOutputFile();
+        this.stopWatching();
+        this.promptForFilename();
+      }, 200);
     });
 
     // Start watching for file changes
@@ -105,19 +110,38 @@ class KushoRecorder {
     
     this.watcher = fs.watch(this.outputFile, (eventType) => {
       if (eventType === 'change') {
-        try {
-          const newCode = fs.readFileSync(this.outputFile, 'utf8');
-          
-          // Only process if code actually changed
-          if (newCode !== this.currentCode) {
-            this.currentCode = newCode;
-            this.handleCodeUpdate(newCode);
-          }
-        } catch (error) {
-          // File might be temporarily locked, ignore
-        }
+        this.scheduleOutputFileRead();
       }
     });
+  }
+
+  scheduleOutputFileRead(delay = 150) {
+    if (this.pendingFileRead) {
+      clearTimeout(this.pendingFileRead);
+    }
+
+    this.pendingFileRead = setTimeout(() => {
+      this.pendingFileRead = null;
+      this.refreshCurrentCodeFromOutputFile();
+    }, delay);
+  }
+
+  refreshCurrentCodeFromOutputFile() {
+    try {
+      if (!fs.existsSync(this.outputFile)) {
+        return;
+      }
+
+      const newCode = fs.readFileSync(this.outputFile, 'utf8');
+      if (!newCode || newCode === this.currentRawCode) {
+        return;
+      }
+
+      this.currentRawCode = newCode;
+      this.handleCodeUpdate(newCode);
+    } catch (error) {
+      // File might still be in the middle of a write, ignore and wait for the next update.
+    }
   }
 
   handleCodeUpdate(code) {
@@ -151,6 +175,7 @@ class KushoRecorder {
   }
 
   stopRecording() {
+    this.refreshCurrentCodeFromOutputFile();
     
     if (this.codegenProcess) {
       this.codegenProcess.kill();
@@ -168,6 +193,11 @@ class KushoRecorder {
   }
 
   stopWatching() {
+    if (this.pendingFileRead) {
+      clearTimeout(this.pendingFileRead);
+      this.pendingFileRead = null;
+    }
+
     if (this.watcher) {
       this.watcher.close();
       this.watcher = null;
@@ -191,6 +221,8 @@ class KushoRecorder {
   }
 
   promptForFilename() {
+    this.refreshCurrentCodeFromOutputFile();
+
     if (!this.currentCode || this.currentCode.trim() === '') {
       console.log(chalk.yellow('⚠️  No code to save'));
       return;
@@ -786,7 +818,7 @@ class KushoRecorder {
     return new Promise((resolve, reject) => {
       const postData = JSON.stringify({
         script: scriptContent,
-        ...(instructions && { instructions })
+        ...(instructions && { instructions: instructions.trim() })
       });
 
       const options = {
@@ -841,7 +873,7 @@ class KushoRecorder {
     return new Promise((resolve, reject) => {
       const postData = JSON.stringify({
         script: scriptContent,
-        ...(instructions && { instructions })
+        ...(instructions && { instructions: instructions.trim() })
       });
 
       const options = {
@@ -897,7 +929,7 @@ class KushoRecorder {
       const postData = JSON.stringify({
         script: originalScript,
         test_cases: testCases,
-        ...(instructions && { instructions })
+        ...(instructions && { instructions: instructions.trim() })
       });
 
       const options = {
@@ -950,7 +982,7 @@ class KushoRecorder {
         script: originalScript,
         test_cases: testCases,
         suite_plan: suitePlan,
-        ...(instructions && { instructions })
+        ...(instructions && { instructions: instructions.trim() })
       });
 
       const options = {
