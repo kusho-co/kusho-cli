@@ -627,7 +627,7 @@ class KushoRecorder {
           }
         }
 
-        fs.writeFileSync(extendedFilePath, extendedScript);
+        fs.writeFileSync(extendedFilePath, this.prependGeneratedReviewComment(extendedScript));
         saveResult = { outputPath: extendedFilePath, manifestPath: null, filesWritten: [extendedFilePath] };
       }
 
@@ -1293,6 +1293,17 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
     return bundlePath;
   }
 
+  prependGeneratedReviewComment(content) {
+    const marker = '[KUSHO] Manual review checklist:';
+    if (!content || content.includes(marker)) {
+      return content;
+    }
+
+    const reviewComment = `/*\n[KUSHO] Manual review checklist:\n1. Avoid waitForLoadState('networkidle') on modern/public sites. Prefer waits for visible UI, stable text, or URL changes.\n2. If you hit errors like \"Test timeout of 30000ms exceeded\", \"page.waitForLoadState: Test timeout exceeded\", or \"net::ERR_ABORTED\", review and fix waits/navigation manually.\n3. Verify every selector and assertion against the real app. Replace placeholders, invented error messages, and guessed keyboard flows.\n4. Check navigation after clicks, redirects, new tabs, or protected pages. Add waits for the next URL/page state before continuing.\n5. Review network-dependent tests carefully and update app-specific setup/data such as auth steps, dropdown opening, dynamic IDs, usernames, and values that may already exist.\n*/\n\n`;
+
+    return `${reviewComment}${content}`;
+  }
+
   saveStructuredSuite(originalPath, suite, instructions = '') {
     const files = Array.isArray(suite.files) ? suite.files : [];
     if (files.length === 0) {
@@ -1309,7 +1320,7 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
         const safeRelativePath = this.sanitizeGeneratedRelativePath(file.path, index);
         const fullPath = this.resolveSafeOutputPath(bundleRoot, safeRelativePath);
         fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-        fs.writeFileSync(fullPath, file.content, 'utf8');
+        fs.writeFileSync(fullPath, this.prependGeneratedReviewComment(file.content), 'utf8');
         filesWritten.push(fullPath);
       });
 
@@ -1335,7 +1346,7 @@ ${testCode.split('\n').map(line => line.trim() ? '  ' + line : line).join('\n')}
     const safeRelativePath = this.sanitizeGeneratedRelativePath(file.path, 0);
     const fullPath = this.createUniqueOutputFilePath(this.extendedDir, safeRelativePath);
     fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-    fs.writeFileSync(fullPath, file.content, 'utf8');
+    fs.writeFileSync(fullPath, this.prependGeneratedReviewComment(file.content), 'utf8');
     filesWritten.push(fullPath);
 
     return {
