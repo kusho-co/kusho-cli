@@ -4,7 +4,7 @@ AI-powered CLI tool for recording UI interactions and generating comprehensive t
 
 KushoAI CLI takes your recorded user flows and generates exhaustive test variations. Record your user flow once, and KushoAI creates multiple test cases with different inputs, edge cases, and scenarios to provide thorough test coverage. The tool transforms manual testing into intelligent, automated test scenarios with minimal effort.
 
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/E1yqiloZCNw/0.jpg)](https://youtu.be/E1yqiloZCNw?si=2JC9XgEYGvSvEF5K)
+[![UI Testing](https://img.youtube.com/vi/E1yqiloZCNw/0.jpg)](https://youtu.be/u6yf9GpBANQ?si=aJlbbd1bRcaR8-tt)
 
 ## Prerequisites
 
